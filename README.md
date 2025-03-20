@@ -92,3 +92,72 @@ We pledge to make CourseChampion a tool that respects educators' time, protects 
 ## 📜 License
 
 CourseChampion is licensed under the [MIT License](LICENSE).
+
+## 📋 Change History
+
+### Version 0.1.0 (Initial Release)
+
+- Created basic project structure
+- Set up Vue.js frontend with the following views:
+  - Home page
+  - Courses listing page
+  - Login page
+  - Registration page
+  - 404 Not Found page
+- Set up Node.js/Express backend with the following endpoints:
+  - `/api/auth` for authentication
+  - `/api/courses` for course management
+  - `/api/users` for user profile management
+- Implemented mock API endpoints for development
+- Added responsive design with mobile-friendly layouts
+- Set up project documentation
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or later)
+- npm (v6 or later)
+- PostgreSQL (v12 or later)
+
+### Installation
+
+1. Clone the repository
+   ```
+   git clone https://github.com/yourusername/coursechampion.git
+   cd coursechampion
+   ```
+
+2. Install backend dependencies
+   ```
+   cd backend
+   npm install
+   ```
+
+3. Set up environment variables
+   ```
+   cp .env.example .env
+   ```
+   Then update the `.env` file with your database credentials and JWT secret
+
+4. Install frontend dependencies
+   ```
+   cd ../frontend
+   npm install
+   ```
+
+5. Run the development servers
+
+   Backend:
+   ```
+   cd backend
+   npm run dev
+   ```
+
+   Frontend:
+   ```
+   cd frontend
+   npm run dev
+   ```
+
+6. Open your browser and navigate to `http://localhost:8080`
