@@ -52,7 +52,9 @@
               <span class="course-level">{{ course.level }}</span>
             </div>
             <div class="course-price">{{ course.price }}</div>
-            <button class="btn-enroll">View Course</button>
+            <button class="btn-enroll" @click="viewCourse(course.id)">
+              View Course
+            </button>
           </div>
         </div>
       </div>
@@ -151,6 +153,11 @@ export default {
     setTimeout(() => {
       this.loading = false;
     }, 1000);
+  },
+  methods: {
+    viewCourse(courseId) {
+      this.$router.push(`/courses/${courseId}`);
+    },
   },
 };
 </script>

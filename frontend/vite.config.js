@@ -19,4 +19,18 @@ export default defineConfig({
       },
     },
   },
+  // Optional: Add ESLint integration to show errors in console
+  optimizeDeps: {
+    include: ["vue", "vue-router"],
+  },
+  // Ensure HMR works properly
+  build: {
+    sourcemap: true,
+    manifest: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+      },
+    },
+  },
 });
