@@ -5,13 +5,7 @@
       <form @submit.prevent="handleSubmit" class="login-form">
         <div class="form-group">
           <label for="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            v-model="email"
-            required
-            placeholder="your@email.com"
-          />
+          <input type="email" id="email" v-model="email" required placeholder="your@email.com" />
         </div>
 
         <div class="form-group">
@@ -30,7 +24,7 @@
         </div>
 
         <button type="submit" class="btn-submit" :disabled="isLoading">
-          {{ isLoading ? "Logging in..." : "Login" }}
+          {{ isLoading ? 'Logging in...' : 'Login' }}
         </button>
 
         <div class="form-footer">
@@ -45,34 +39,55 @@
 </template>
 
 <script>
+import api from '../services/api';
+
 export default {
-  name: "Login",
+  name: 'Login',
   data() {
     return {
-      email: "",
-      password: "",
-      errorMessage: "",
+      email: '',
+      password: '',
+      errorMessage: '',
       isLoading: false,
     };
   },
   methods: {
     async handleSubmit() {
-      this.errorMessage = "";
+      this.errorMessage = '';
       this.isLoading = true;
 
       try {
-        // Login logic will be implemented later
-        console.log("Login attempt with:", { email: this.email });
+        // Make API call to login endpoint
+        // In a real app, this would call the actual login API
+        // const response = await api.auth.login({ email: this.email, password: this.password });
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Simulate API call for demo
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Mock successful response
+        const response = {
+          data: {
+            success: true,
+            token: 'mock-jwt-token-' + Date.now(),
+            user: {
+              id: 1,
+              name: 'Alex Johnson',
+              email: this.email,
+            },
+          },
+        };
+
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
 
         this.isLoading = false;
-        // Will be replaced with actual navigation after authentication
-        this.$router.push("/courses");
+
+        // Redirect to dashboard
+        this.$router.push('/dashboard');
       } catch (error) {
-        console.error("Login error:", error);
-        this.errorMessage = "Invalid email or password. Please try again.";
+        console.error('Login error:', error);
+        this.errorMessage = 'Invalid email or password. Please try again.';
         this.isLoading = false;
       }
     },

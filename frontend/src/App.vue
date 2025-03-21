@@ -8,7 +8,9 @@
         <div class="nav-links">
           <router-link to="/">Home</router-link>
           <router-link to="/courses">Courses</router-link>
-          <router-link to="/login">Login</router-link>
+          <router-link v-if="isAuthenticated" to="/dashboard">Dashboard</router-link>
+          <router-link v-if="!isAuthenticated" to="/login">Login</router-link>
+          <a v-else href="#" @click.prevent="logout">Logout</a>
         </div>
       </nav>
     </header>
@@ -16,17 +18,51 @@
       <router-view />
     </main>
     <footer>
-      <p>
-        &copy; {{ new Date().getFullYear() }} Course Champion. All rights
-        reserved.
-      </p>
+      <p>&copy; {{ new Date().getFullYear() }} Course Champion. All rights reserved.</p>
     </footer>
   </div>
 </template>
 
 <script>
 export default {
-  name: "App",
+  name: 'App',
+  data() {
+    return {
+      isAuthenticated: false,
+    };
+  },
+  methods: {
+    logout() {
+      // Clear user authentication
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.isAuthenticated = false;
+
+      // Redirect to home page
+      if (this.$route.meta.requiresAuth) {
+        this.$router.push('/');
+      }
+    },
+    checkAuthentication() {
+      // Check if user is authenticated
+      this.isAuthenticated = localStorage.getItem('token') !== null;
+    },
+  },
+  mounted() {
+    this.checkAuthentication();
+
+    // Listen for authentication events
+    window.addEventListener('storage', event => {
+      if (event.key === 'token') {
+        this.checkAuthentication();
+      }
+    });
+  },
+  watch: {
+    $route() {
+      this.checkAuthentication();
+    },
+  },
 };
 </script>
 
@@ -39,7 +75,7 @@ export default {
 }
 
 body {
-  font-family: "Roboto", sans-serif;
+  font-family: 'Roboto', sans-serif;
   line-height: 1.6;
   color: #333;
   background-color: #f8f9fa;
@@ -83,6 +119,7 @@ nav {
   text-decoration: none;
   font-weight: 500;
   transition: color 0.3s;
+  cursor: pointer;
 }
 
 .nav-links a:hover {

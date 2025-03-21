@@ -95,6 +95,45 @@ CourseChampion is licensed under the [MIT License](LICENSE).
 
 ## 📋 Change History
 
+### Version 0.3.0
+
+- Added user dashboard with:
+  - Course progress tracking
+  - Visual progress indicators for each course
+  - Recently accessed lessons for quick navigation
+  - Course recommendations
+  - Summary statistics (enrolled courses, completed courses, average progress)
+- Enhanced authentication system:
+  - Added token-based authentication
+  - Implemented login persistence
+  - Added navigation guards for protected routes
+  - Created authentication-aware navigation
+- Improved course enrollment functionality:
+  - Added enrollment management service
+  - Added ability to enroll in and unenroll from courses
+  - Added progress tracking across courses
+- Fixed ESLint configuration:
+  - Updated from Vue CLI to Vite for improved development experience
+  - Added proper ESLint and Prettier configurations
+  - Fixed dependency issues and updated packages
+
+### Version 0.2.0
+
+- Added secure video player component with the following features:
+  - Video playback controls (play/pause, volume, seek)
+  - Fullscreen support
+  - Keyboard shortcuts
+  - Watermarking
+  - Prevention of right-click downloading
+  - Progress tracking
+- Implemented course view page with:
+  - Secure video player integration
+  - Course content sidebar
+  - Progress tracking
+  - Drip content release feature (time-based content unlocking)
+  - Course completion tracking
+- Updated courses listing page to link to individual course pages
+
 ### Version 0.1.0 (Initial Release)
 
 - Created basic project structure
