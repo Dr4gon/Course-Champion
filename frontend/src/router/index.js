@@ -32,6 +32,24 @@ const routes = [
     name: 'Register',
     component: () => import('../views/Register.vue'),
   },
+  // Subscription routes
+  {
+    path: '/subscription-plans',
+    name: 'SubscriptionPlans',
+    component: () => import('../views/SubscriptionPlans.vue'),
+  },
+  {
+    path: '/subscription-success',
+    name: 'SubscriptionSuccess',
+    component: () => import('../views/SubscriptionSuccess.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/account/billing',
+    name: 'BillingManagement',
+    component: () => import('../views/BillingManagement.vue'),
+    meta: { requiresAuth: true },
+  },
   // Catch all route for 404
   {
     path: '/:pathMatch(.*)*',
