@@ -63,6 +63,56 @@ router.post('/new', async (req, res) => {
 });
 
 /**
+ * @route   POST /api/users/login
+ * @desc    Authenticate user & get token
+ * @access  Public
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide email and password',
+      });
+    }
+
+    // Find user by email
+    const user = User.findByEmail(email);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+      });
+    }
+
+    // Verify password
+    const isMatch = await user.verifyPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+      });
+    }
+
+    // Return user data
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: user, // password is removed by toJSON method in User class
+    });
+  } catch (error) {
+    console.error('Login error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Server error',
+    });
+  }
+});
+
+/**
  * @route   GET /api/users
  * @desc    Get all users (for testing purposes)
  * @access  Public

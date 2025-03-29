@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Login - CourseChampion</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 2px solid #ecf0f1;
+        padding-bottom: 10px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .error {
+        color: #e74c3c;
+        margin-top: 5px;
+      }
+      .success {
+        color: #2ecc71;
+        margin-top: 5px;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+      }
+      a {
+        display: inline-block;
+        margin-top: 20px;
+        color: #3498db;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>User Login</h1>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required placeholder="Enter your email" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required placeholder="Enter your password" />
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div id="result" style="display: none"></div>
+
+    <div style="margin-top: 20px">
+      <a href="/" id="backLink">Back to Home</a>
+      <span style="margin: 0 10px">|</span>
+      <a href="/register.html">Not registered? Sign up here</a>
+    </div>
+
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = 'Logging in...';
+        resultDiv.className = '';
+
+        // Get form values
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+          // Send login request
+          const response = await fetch('/api/users/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            resultDiv.innerHTML = `
+            <div class="success">
+              <strong>Login successful!</strong><br>
+              User ID: ${data.data.id}<br>
+              Name: ${data.data.name}<br>
+              Email: ${data.data.email}
+            </div>
+          `;
+
+            // Clear form
+            document.getElementById('loginForm').reset();
+          } else {
+            resultDiv.innerHTML = `
+            <div class="error">
+              <strong>Login failed:</strong><br>
+              ${data.error}
+            </div>
+          `;
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `
+          <div class="error">
+            <strong>Error:</strong><br>
+            ${error.message}
+          </div>
+        `;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -44,6 +44,7 @@ app.listen(PORT, () => {
   console.log(`Test URL: http://localhost:${PORT}/`);
   console.log(`API Test URL: http://localhost:${PORT}/api/test`);
   console.log(`Registration API: http://localhost:${PORT}/api/users/new`);
+  console.log(`Login API: http://localhost:${PORT}/api/users/login`);
 });
 
 module.exports = app;
