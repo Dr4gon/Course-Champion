@@ -3,11 +3,11 @@ const router = express.Router();
 const User = require('../models/User');
 
 /**
- * @route   POST /api/users/register
+ * @route   POST /api/users/new
  * @desc    Register a new user
  * @access  Public
  */
-router.post('/register', async (req, res) => {
+router.post('/new', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
