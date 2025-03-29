@@ -49,6 +49,10 @@ app.listen(PORT, () => {
   console.log(`Login API: http://localhost:${PORT}/api/users/login`);
   console.log(`Delete User API: http://localhost:${PORT}/api/users/:id (DELETE)`);
   console.log(`Notion Page API: http://localhost:${PORT}/api/notion/page?url=<notion_url>`);
+  console.log(
+    `Notion Import API: http://localhost:${PORT}/api/notion/import?url=<notion_url>&format=<format>&cache=<bool>&children=<bool>`
+  );
+  console.log(`Notion Cache API: http://localhost:${PORT}/api/notion/cached/<page_id>`);
 });
 
 module.exports = app;

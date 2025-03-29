@@ -128,6 +128,42 @@
       a:hover {
         text-decoration: underline;
       }
+
+      /* Tab styling */
+      .tab-button {
+        padding: 8px 16px;
+        background-color: #f1f1f1;
+        border: none;
+        border-radius: 4px 4px 0 0;
+        cursor: pointer;
+        margin-right: 4px;
+        font-size: 14px;
+      }
+      .tab-button:hover {
+        background-color: #ddd;
+      }
+      .tab-button.active {
+        background-color: #3498db;
+        color: white;
+      }
+      .tab-content {
+        display: none;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 0 0 4px 4px;
+        margin-top: -1px;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .tab-content pre {
+        margin: 0;
+        background-color: #f8f8f8;
+        border-radius: 3px;
+        padding: 10px;
+        max-height: 500px;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
@@ -136,6 +172,38 @@
     <div class="form-group">
       <label for="notionUrl">Notion Page URL:</label>
       <input type="text" id="notionUrl" placeholder="https://www.notion.so/Example-Page-123456789abcdef" />
+    </div>
+
+    <div class="form-group">
+      <label>Import Options:</label>
+      <div style="display: flex; gap: 20px; margin-top: 10px">
+        <div>
+          <label style="font-weight: normal">
+            <input type="radio" name="format" value="all" checked /> All formats
+          </label>
+        </div>
+        <div>
+          <label style="font-weight: normal">
+            <input type="radio" name="format" value="markdown" /> Markdown only
+          </label>
+        </div>
+        <div>
+          <label style="font-weight: normal"> <input type="radio" name="format" value="html" /> HTML only </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div style="display: flex; gap: 20px; margin-top: 10px">
+        <div>
+          <label style="font-weight: normal"> <input type="checkbox" id="useCache" checked /> Use cache </label>
+        </div>
+        <div>
+          <label style="font-weight: normal">
+            <input type="checkbox" id="includeChildren" checked /> Include nested content
+          </label>
+        </div>
+      </div>
     </div>
 
     <button id="fetchButton">Fetch Notion Page</button>
@@ -152,13 +220,44 @@
             <small>Last Updated: <span id="lastUpdated"></span></small>
           </div>
         </div>
-        <div id="pageContent"></div>
+        <div id="formatTabs" style="margin-bottom: 20px">
+          <button class="tab-button active" data-target="pageContent">Rendered</button>
+          <button class="tab-button" data-target="htmlContent">HTML</button>
+          <button class="tab-button" data-target="markdownContent">Markdown</button>
+          <button class="tab-button" data-target="jsonContent">JSON</button>
+        </div>
+        <div id="pageContent" class="tab-content active"></div>
+        <div id="htmlContent" class="tab-content">
+          <pre><code></code></pre>
+        </div>
+        <div id="markdownContent" class="tab-content">
+          <pre><code></code></pre>
+        </div>
+        <div id="jsonContent" class="tab-content">
+          <pre><code></code></pre>
+        </div>
       </div>
     </div>
 
     <a href="/" id="backLink">Back to Home</a>
 
     <script>
+      // Set up tabs
+      document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+          // Remove active class from all buttons and content
+          document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+          // Add active class to clicked button
+          button.classList.add('active');
+
+          // Show the corresponding content
+          const target = button.getAttribute('data-target');
+          document.getElementById(target).classList.add('active');
+        });
+      });
+
       document.getElementById('fetchButton').addEventListener('click', async () => {
         const notionUrl = document.getElementById('notionUrl').value.trim();
         const errorMessageEl = document.getElementById('errorMessage');
@@ -167,6 +266,16 @@
         const pageTitleEl = document.getElementById('pageTitle');
         const lastUpdatedEl = document.getElementById('lastUpdated');
         const pageContentEl = document.getElementById('pageContent');
+        const htmlContentEl = document.getElementById('htmlContent').querySelector('code');
+        const markdownContentEl = document.getElementById('markdownContent').querySelector('code');
+        const jsonContentEl = document.getElementById('jsonContent').querySelector('code');
+
+        // Get selected format
+        const format = document.querySelector('input[name="format"]:checked').value;
+
+        // Get other options
+        const useCache = document.getElementById('useCache').checked;
+        const includeChildren = document.getElementById('includeChildren').checked;
 
         // Reset UI
         errorMessageEl.style.display = 'none';
@@ -183,8 +292,11 @@
         loaderEl.style.display = 'block';
 
         try {
-          // Fetch page content
-          const response = await fetch(`/api/notion/page?url=${encodeURIComponent(notionUrl)}`);
+          // Fetch page content using the import API
+          const url = `/api/notion/import?url=${encodeURIComponent(
+            notionUrl
+          )}&format=${format}&cache=${useCache}&children=${includeChildren}`;
+          const response = await fetch(url);
           const data = await response.json();
 
           // Hide loader
@@ -203,11 +315,43 @@
           const lastUpdated = new Date(data.data.lastUpdated).toLocaleString();
           lastUpdatedEl.textContent = lastUpdated;
 
-          // Render markdown
-          pageContentEl.innerHTML = marked.parse(data.data.markdown);
+          // Show appropriate content based on the format
+          if (data.data.html) {
+            pageContentEl.innerHTML = data.data.html;
+            htmlContentEl.textContent = data.data.html;
+          } else {
+            pageContentEl.innerHTML = marked.parse(data.data.markdown || '');
+          }
+
+          if (data.data.markdown) {
+            markdownContentEl.textContent = data.data.markdown;
+          }
+
+          // For JSON, show a simplified version without the content
+          if (data.data.blocks) {
+            const simplifiedData = {
+              id: data.data.id,
+              title: data.data.title,
+              properties: data.data.properties,
+              lastUpdated: data.data.lastUpdated,
+              createdTime: data.data.createdTime,
+              // Don't include HTML or Markdown to keep it cleaner
+              blocksCount: Array.isArray(data.data.blocks) ? data.data.blocks.length : 'Not included',
+              icon: data.data.icon,
+              cover: data.data.cover,
+            };
+            jsonContentEl.textContent = JSON.stringify(simplifiedData, null, 2);
+          }
 
           // Show result
           resultEl.style.display = 'block';
+
+          // Default to the first tab that has content
+          if (data.data.html || data.data.markdown) {
+            document.querySelector('.tab-button[data-target="pageContent"]').click();
+          } else if (data.data.blocks) {
+            document.querySelector('.tab-button[data-target="jsonContent"]').click();
+          }
         } catch (error) {
           loaderEl.style.display = 'none';
           errorMessageEl.textContent = `Error: ${error.message}`;
