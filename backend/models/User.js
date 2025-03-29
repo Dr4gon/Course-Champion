@@ -59,4 +59,18 @@ module.exports = {
   findAll() {
     return users;
   },
+
+  // Delete a user by ID
+  delete(id) {
+    const numericId = Number(id);
+    const index = users.findIndex(user => user.id === numericId);
+
+    if (index === -1) {
+      return false; // User not found
+    }
+
+    // Remove user from array
+    users.splice(index, 1);
+    return true; // User deleted successfully
+  },
 };

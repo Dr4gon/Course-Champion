@@ -113,6 +113,47 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * @route   DELETE /api/users/:id
+ * @desc    Delete a user
+ * @access  Public (should be protected in a real app)
+ */
+router.delete('/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const user = User.findById(Number(id));
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    // Delete user
+    const deleted = User.delete(id);
+
+    if (deleted) {
+      return res.json({
+        success: true,
+        message: `User with ID ${id} deleted successfully`,
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to delete user',
+      });
+    }
+  } catch (error) {
+    console.error('Delete user error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Server error',
+    });
+  }
+});
+
+/**
  * @route   GET /api/users
  * @desc    Get all users (for testing purposes)
  * @access  Public
