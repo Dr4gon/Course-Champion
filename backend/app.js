@@ -5,6 +5,7 @@ const path = require('path');
 
 // Import routes
 const userRoutes = require('./routes/users');
+const notionRoutes = require('./routes/notion');
 
 // Load environment variables
 dotenv.config();
@@ -28,8 +29,9 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// User routes
+// Routes
 app.use('/api/users', userRoutes);
+app.use('/api/notion', notionRoutes);
 
 // Home route
 app.get('/', (req, res) => {
@@ -46,6 +48,7 @@ app.listen(PORT, () => {
   console.log(`Registration API: http://localhost:${PORT}/api/users/new`);
   console.log(`Login API: http://localhost:${PORT}/api/users/login`);
   console.log(`Delete User API: http://localhost:${PORT}/api/users/:id (DELETE)`);
+  console.log(`Notion Page API: http://localhost:${PORT}/api/notion/page?url=<notion_url>`);
 });
 
 module.exports = app;
