@@ -3,6 +3,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
+// Import routes
+const userRoutes = require('./routes/users');
+
 // Load environment variables
 dotenv.config();
 
@@ -25,6 +28,9 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// User routes
+app.use('/api/users', userRoutes);
+
 // Home route
 app.get('/', (req, res) => {
   // Redirect to the test HTML page
@@ -37,6 +43,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Test URL: http://localhost:${PORT}/`);
   console.log(`API Test URL: http://localhost:${PORT}/api/test`);
+  console.log(`Registration API: http://localhost:${PORT}/api/users/register`);
 });
 
 module.exports = app;
