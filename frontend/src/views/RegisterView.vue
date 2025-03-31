@@ -1,30 +1,34 @@
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+export default {
+  name: 'RegisterView',
+  data() {
+    return {
+      name: '',
+      email: '',
+      password: '',
+      error: '',
+    }
+  },
+  methods: {
+    handleRegister(e) {
+      e.preventDefault()
 
-const router = useRouter()
-const name = ref('')
-const email = ref('')
-const password = ref('')
-const error = ref('')
+      // Simple validation
+      if (!this.name || !this.email || !this.password) {
+        this.error = 'Please fill out all fields'
+        return
+      }
 
-const handleRegister = async (e) => {
-  e.preventDefault()
+      // Here you would normally call an API
+      // For this example, just simulate a registration and redirect
+      console.log('Register with:', this.name, this.email)
 
-  // Simple validation
-  if (!name.value || !email.value || !password.value) {
-    error.value = 'Please fill out all fields'
-    return
-  }
-
-  // Here you would normally call an API
-  // For this example, just simulate a registration and redirect
-  console.log('Register with:', name.value, email.value)
-
-  // Simulate success and redirect to login page
-  setTimeout(() => {
-    router.push('/')
-  }, 500)
+      // Simulate success and redirect to login page
+      setTimeout(() => {
+        this.$router.push('/')
+      }, 500)
+    },
+  },
 }
 </script>
 

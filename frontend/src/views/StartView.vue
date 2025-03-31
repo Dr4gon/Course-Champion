@@ -1,11 +1,12 @@
-<script setup>
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
-const handleLogout = () => {
-  // In a real app, you would clear authentication token here
-  router.push('/')
+<script>
+export default {
+  name: 'StartView',
+  methods: {
+    handleLogout() {
+      // In a real app, you would clear authentication token here
+      this.$router.push('/')
+    },
+  },
 }
 </script>
 

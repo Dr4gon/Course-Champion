@@ -1,29 +1,33 @@
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+export default {
+  name: 'LoginView',
+  data() {
+    return {
+      email: '',
+      password: '',
+      error: '',
+    }
+  },
+  methods: {
+    handleLogin(e) {
+      e.preventDefault()
 
-const router = useRouter()
-const email = ref('')
-const password = ref('')
-const error = ref('')
+      // Simple validation
+      if (!this.email || !this.password) {
+        this.error = 'Please enter both email and password'
+        return
+      }
 
-const handleLogin = async (e) => {
-  e.preventDefault()
+      // Here you would normally call an API
+      // For this example, just simulate a login and redirect
+      console.log('Login with:', this.email)
 
-  // Simple validation
-  if (!email.value || !password.value) {
-    error.value = 'Please enter both email and password'
-    return
-  }
-
-  // Here you would normally call an API
-  // For this example, just simulate a login and redirect
-  console.log('Login with:', email.value)
-
-  // Simulate success and redirect to start page
-  setTimeout(() => {
-    router.push('/start')
-  }, 500)
+      // Simulate success and redirect to start page
+      setTimeout(() => {
+        this.$router.push('/start')
+      }, 500)
+    },
+  },
 }
 </script>
 
