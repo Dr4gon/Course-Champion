@@ -7,6 +7,8 @@ export default {
       email: '',
       password: '',
       error: '',
+      success: '',
+      isLoading: false,
     }
   },
   methods: {
@@ -19,14 +21,50 @@ export default {
         return
       }
 
-      // Here you would normally call an API
-      // For this example, just simulate a registration and redirect
-      console.log('Register with:', this.name, this.email)
+      // Set loading state
+      this.isLoading = true
+      this.error = ''
+      this.success = ''
 
-      // Simulate success and redirect to login page
-      setTimeout(() => {
-        this.$router.push('/')
-      }, 500)
+      // Make API call to the backend registration endpoint
+      fetch('/api/users/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: this.name,
+          email: this.email,
+          password: this.password,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          this.isLoading = false
+
+          if (data.success) {
+            // Registration successful
+            this.success = data.message || 'Registration successful!'
+
+            // Clear the form
+            this.name = ''
+            this.email = ''
+            this.password = ''
+
+            // Redirect to login page after delay
+            setTimeout(() => {
+              this.$router.push('/')
+            }, 2000)
+          } else {
+            // Registration failed
+            this.error = data.error || 'Registration failed. Please try again.'
+          }
+        })
+        .catch((err) => {
+          this.isLoading = false
+          this.error = 'An error occurred while connecting to the server. Please try again later.'
+          console.error('Registration error:', err)
+        })
     },
   },
 }
@@ -44,6 +82,7 @@ export default {
 
         <form @submit="handleRegister">
           <div v-if="error" class="error" role="alert">{{ error }}</div>
+          <div v-if="success" class="success" role="alert">{{ success }}</div>
 
           <label for="name">
             Name
@@ -81,7 +120,9 @@ export default {
             />
           </label>
 
-          <button type="submit">Register</button>
+          <button type="submit" :aria-busy="isLoading">
+            {{ isLoading ? 'Registering...' : 'Register' }}
+          </button>
         </form>
 
         <p>Already have an account? <router-link to="/">Login</router-link></p>
@@ -101,5 +142,16 @@ article {
 .error {
   color: var(--form-element-invalid-border-color);
   margin-bottom: 1rem;
+  background-color: rgba(var(--form-element-invalid-border-color-rgb, 230, 76, 76), 0.1);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.success {
+  color: #2ecc71;
+  margin-bottom: 1rem;
+  background-color: rgba(46, 204, 113, 0.1);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
 }
 </style>

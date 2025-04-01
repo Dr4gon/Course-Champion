@@ -6,6 +6,7 @@ export default {
       email: '',
       password: '',
       error: '',
+      isLoading: false,
     }
   },
   methods: {
@@ -18,14 +19,45 @@ export default {
         return
       }
 
-      // Here you would normally call an API
-      // For this example, just simulate a login and redirect
-      console.log('Login with:', this.email)
+      // Set loading state
+      this.isLoading = true
+      this.error = ''
 
-      // Simulate success and redirect to start page
-      setTimeout(() => {
-        this.$router.push('/start')
-      }, 500)
+      // Make API call to the backend login endpoint
+      fetch('/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: this.email,
+          password: this.password,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          this.isLoading = false
+
+          if (data.success) {
+            // Login successful
+            console.log('Login successful:', data)
+
+            // In a real app, you would store user info and token
+            // localStorage.setItem('token', data.token)
+            // localStorage.setItem('user', JSON.stringify(data.data))
+
+            // Redirect to start page
+            this.$router.push('/start')
+          } else {
+            // Login failed
+            this.error = data.error || 'Invalid email or password'
+          }
+        })
+        .catch((err) => {
+          this.isLoading = false
+          this.error = 'An error occurred while connecting to the server. Please try again later.'
+          console.error('Login error:', err)
+        })
     },
   },
 }
@@ -68,7 +100,9 @@ export default {
             />
           </label>
 
-          <button type="submit">Login</button>
+          <button type="submit" :aria-busy="isLoading">
+            {{ isLoading ? 'Signing in...' : 'Login' }}
+          </button>
         </form>
 
         <p>Don't have an account? <router-link to="/register">Register</router-link></p>
@@ -88,5 +122,8 @@ article {
 .error {
   color: var(--form-element-invalid-border-color);
   margin-bottom: 1rem;
+  background-color: rgba(var(--form-element-invalid-border-color-rgb, 230, 76, 76), 0.1);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
 }
 </style>
