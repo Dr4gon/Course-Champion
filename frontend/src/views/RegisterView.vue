@@ -1,4 +1,7 @@
 <script>
+import api from '@/services/api'
+import { handleApiError } from '@/services/errorHandler'
+
 export default {
   name: 'RegisterView',
   data() {
@@ -26,44 +29,35 @@ export default {
       this.error = ''
       this.success = ''
 
-      // Make API call to the backend registration endpoint
-      fetch('/api/users/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Make API call using Axios instead of fetch
+      api
+        .post('/users/new', {
           name: this.name,
           email: this.email,
           password: this.password,
-        }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          this.isLoading = false
-
-          if (data.success) {
-            // Registration successful
-            this.success = data.message || 'Registration successful!'
-
-            // Clear the form
-            this.name = ''
-            this.email = ''
-            this.password = ''
-
-            // Redirect to login page after delay
-            setTimeout(() => {
-              this.$router.push('/')
-            }, 2000)
-          } else {
-            // Registration failed
-            this.error = data.error || 'Registration failed. Please try again.'
-          }
         })
-        .catch((err) => {
+        .then((data) => {
+          // Registration successful
+          this.success = data.message || 'Registration successful!'
+
+          // Clear the form
+          this.name = ''
+          this.email = ''
+          this.password = ''
+
+          // Redirect to login page after delay
+          setTimeout(() => {
+            this.$router.push('/')
+          }, 2000)
+        })
+        .catch((error) => {
+          // Use centralized error handler with custom default message
+          this.error = handleApiError(error, {
+            defaultMessage: 'Registration failed. Please check your information and try again.',
+          })
+        })
+        .finally(() => {
           this.isLoading = false
-          this.error = 'An error occurred while connecting to the server. Please try again later.'
-          console.error('Registration error:', err)
         })
     },
   },

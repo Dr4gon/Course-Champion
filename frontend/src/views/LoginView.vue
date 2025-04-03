@@ -1,4 +1,7 @@
 <script>
+import api from '@/services/api'
+import { handleApiError } from '@/services/errorHandler'
+
 export default {
   name: 'LoginView',
   data() {
@@ -23,40 +26,31 @@ export default {
       this.isLoading = true
       this.error = ''
 
-      // Make API call to the backend login endpoint
-      fetch('/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Make API call using Axios instead of fetch
+      api
+        .post('/users/login', {
           email: this.email,
           password: this.password,
-        }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          this.isLoading = false
-
-          if (data.success) {
-            // Login successful
-            console.log('Login successful:', data)
-
-            // In a real app, you would store user info and token
-            // localStorage.setItem('token', data.token)
-            // localStorage.setItem('user', JSON.stringify(data.data))
-
-            // Redirect to start page
-            this.$router.push('/start')
-          } else {
-            // Login failed
-            this.error = data.error || 'Invalid email or password'
-          }
         })
-        .catch((err) => {
+        .then((data) => {
+          // Login successful
+          console.log('Login successful:', data)
+
+          // In a real app, you would store user info and token
+          // localStorage.setItem('token', data.token)
+          // localStorage.setItem('user', JSON.stringify(data.data))
+
+          // Redirect to start page
+          this.$router.push('/start')
+        })
+        .catch((error) => {
+          // Use centralized error handler with custom default message
+          this.error = handleApiError(error, {
+            defaultMessage: 'Login failed. Please check your credentials and try again.',
+          })
+        })
+        .finally(() => {
           this.isLoading = false
-          this.error = 'An error occurred while connecting to the server. Please try again later.'
-          console.error('Login error:', err)
         })
     },
   },
