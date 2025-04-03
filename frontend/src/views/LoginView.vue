@@ -13,7 +13,7 @@ export default {
     }
   },
   methods: {
-    handleLogin(e) {
+    async handleLogin(e) {
       e.preventDefault()
 
       // Simple validation
@@ -26,32 +26,30 @@ export default {
       this.isLoading = true
       this.error = ''
 
-      // Make API call using Axios instead of fetch
-      api
-        .post('/users/login', {
+      try {
+        // Make API call using Axios with await
+        const data = await api.post('/users/login', {
           email: this.email,
           password: this.password,
         })
-        .then((data) => {
-          // Login successful
-          console.log('Login successful:', data)
 
-          // In a real app, you would store user info and token
-          // localStorage.setItem('token', data.token)
-          // localStorage.setItem('user', JSON.stringify(data.data))
+        // Login successful
+        console.log('Login successful:', data)
 
-          // Redirect to start page
-          this.$router.push('/start')
+        // In a real app, you would store user info and token
+        // localStorage.setItem('token', data.token)
+        // localStorage.setItem('user', JSON.stringify(data.data))
+
+        // Redirect to start page
+        this.$router.push('/start')
+      } catch (error) {
+        // Use centralized error handler with custom default message
+        this.error = handleApiError(error, {
+          defaultMessage: 'Login failed. Please check your credentials and try again.',
         })
-        .catch((error) => {
-          // Use centralized error handler with custom default message
-          this.error = handleApiError(error, {
-            defaultMessage: 'Login failed. Please check your credentials and try again.',
-          })
-        })
-        .finally(() => {
-          this.isLoading = false
-        })
+      } finally {
+        this.isLoading = false
+      }
     },
   },
 }

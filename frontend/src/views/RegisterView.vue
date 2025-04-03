@@ -15,7 +15,7 @@ export default {
     }
   },
   methods: {
-    handleRegister(e) {
+    async handleRegister(e) {
       e.preventDefault()
 
       // Simple validation
@@ -29,36 +29,34 @@ export default {
       this.error = ''
       this.success = ''
 
-      // Make API call using Axios instead of fetch
-      api
-        .post('/users/new', {
+      try {
+        // Make API call using Axios with await
+        const data = await api.post('/users/new', {
           name: this.name,
           email: this.email,
           password: this.password,
         })
-        .then((data) => {
-          // Registration successful
-          this.success = data.message || 'Registration successful!'
 
-          // Clear the form
-          this.name = ''
-          this.email = ''
-          this.password = ''
+        // Registration successful
+        this.success = data.message || 'Registration successful!'
 
-          // Redirect to login page after delay
-          setTimeout(() => {
-            this.$router.push('/')
-          }, 2000)
+        // Clear the form
+        this.name = ''
+        this.email = ''
+        this.password = ''
+
+        // Redirect to login page after delay
+        setTimeout(() => {
+          this.$router.push('/')
+        }, 2000)
+      } catch (error) {
+        // Use centralized error handler with custom default message
+        this.error = handleApiError(error, {
+          defaultMessage: 'Registration failed. Please check your information and try again.',
         })
-        .catch((error) => {
-          // Use centralized error handler with custom default message
-          this.error = handleApiError(error, {
-            defaultMessage: 'Registration failed. Please check your information and try again.',
-          })
-        })
-        .finally(() => {
-          this.isLoading = false
-        })
+      } finally {
+        this.isLoading = false
+      }
     },
   },
 }
