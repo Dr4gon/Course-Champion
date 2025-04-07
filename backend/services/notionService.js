@@ -66,14 +66,27 @@ const getAllBlocksRecursive = async (blockId, depth = 0) => {
       cursor = response.next_cursor;
     }
 
-    // Process blocks with children
-    for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[i];
+    // Process blocks with children in parallel batches
+    const blocksWithChildren = blocks.filter(block => block.has_children);
+    const BATCH_SIZE = 5; // Process 5 blocks at a time to avoid rate limiting
 
-      if (block.has_children) {
-        // Get all children blocks recursively
-        const childBlocks = await getAllBlocksRecursive(block.id, depth + 1);
-        blocks[i].children = childBlocks;
+    for (let i = 0; i < blocksWithChildren.length; i += BATCH_SIZE) {
+      const batch = blocksWithChildren.slice(i, i + BATCH_SIZE);
+      const childBlocksPromises = batch.map(block => getAllBlocksRecursive(block.id, depth + 1));
+
+      const childBlocksResults = await Promise.all(childBlocksPromises);
+
+      // Update the original blocks with their children
+      batch.forEach((block, index) => {
+        const blockIndex = blocks.findIndex(b => b.id === block.id);
+        if (blockIndex !== -1) {
+          blocks[blockIndex].children = childBlocksResults[index];
+        }
+      });
+
+      // Add a small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < blocksWithChildren.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
