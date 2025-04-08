@@ -13,26 +13,44 @@ const notion = new Client({
 // Cache directory for storing imported pages
 const CACHE_DIR = path.join(__dirname, '../cache/notion');
 
+// Timing utility
+const timingInterceptor = async (methodName, fn) => {
+  const startTime = process.hrtime();
+  try {
+    const result = await fn();
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    const executionTime = seconds * 1000 + nanoseconds / 1000000; // Convert to milliseconds
+    console.log(`[Timing] ${methodName}: ${executionTime.toFixed(2)}ms`);
+    return result;
+  } catch (error) {
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    const executionTime = seconds * 1000 + nanoseconds / 1000000;
+    console.log(`[Timing] ${methodName} (failed): ${executionTime.toFixed(2)}ms`);
+    throw error;
+  }
+};
+
 /**
  * Extract page ID from a Notion URL
  * @param {string} url - Notion page URL
  * @returns {string} - The page ID
  */
-const extractPageId = url => {
-  try {
-    // Regular expression to match Notion page ID patterns
-    const pattern = /([a-zA-Z0-9]{32})|([a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12})/;
-    const match = url.match(pattern);
+const extractPageId = url =>
+  timingInterceptor('extractPageId', async () => {
+    try {
+      // Regular expression to match Notion page ID patterns
+      const pattern = /([a-zA-Z0-9]{32})|([a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12})/;
+      const match = url.match(pattern);
 
-    if (!match) {
-      throw new Error('Invalid Notion URL: Could not extract page ID');
+      if (!match) {
+        throw new Error('Invalid Notion URL: Could not extract page ID');
+      }
+
+      return match[0];
+    } catch (error) {
+      throw new Error(`Error extracting page ID: ${error.message}`);
     }
-
-    return match[0];
-  } catch (error) {
-    throw new Error(`Error extracting page ID: ${error.message}`);
-  }
-};
+  });
 
 /**
  * Retrieve all blocks for a page recursively, including nested blocks
@@ -40,216 +58,219 @@ const extractPageId = url => {
  * @param {number} depth - Current depth of recursion (used to prevent infinite loops)
  * @returns {Array} - Array of block objects with their children
  */
-const getAllBlocksRecursive = async (blockId, depth = 0) => {
-  if (depth > 5) {
-    // Prevent excessive recursion
-    return [];
-  }
-
-  try {
-    const blocks = [];
-    let cursor;
-    let hasMore = true;
-
-    // Paginate through all blocks
-    while (hasMore) {
-      const response = await notion.blocks.children.list({
-        block_id: blockId,
-        start_cursor: cursor,
-        page_size: 100,
-      });
-
-      const newBlocks = response.results;
-      blocks.push(...newBlocks);
-
-      hasMore = response.has_more;
-      cursor = response.next_cursor;
+const getAllBlocksRecursive = async (blockId, depth = 0) =>
+  timingInterceptor('getAllBlocksRecursive', async () => {
+    if (depth > 5) {
+      // Prevent excessive recursion
+      return [];
     }
 
-    // Process blocks with children in parallel batches
-    const blocksWithChildren = blocks.filter(block => block.has_children);
-    const BATCH_SIZE = 5; // Process 5 blocks at a time to avoid rate limiting
+    try {
+      const blocks = [];
+      let cursor;
+      let hasMore = true;
 
-    for (let i = 0; i < blocksWithChildren.length; i += BATCH_SIZE) {
-      const batch = blocksWithChildren.slice(i, i + BATCH_SIZE);
-      const childBlocksPromises = batch.map(block => getAllBlocksRecursive(block.id, depth + 1));
+      // Paginate through all blocks
+      while (hasMore) {
+        const response = await notion.blocks.children.list({
+          block_id: blockId,
+          start_cursor: cursor,
+          page_size: 100,
+        });
 
-      const childBlocksResults = await Promise.all(childBlocksPromises);
+        const newBlocks = response.results;
+        blocks.push(...newBlocks);
 
-      // Update the original blocks with their children
-      batch.forEach((block, index) => {
-        const blockIndex = blocks.findIndex(b => b.id === block.id);
-        if (blockIndex !== -1) {
-          blocks[blockIndex].children = childBlocksResults[index];
-        }
-      });
-
-      // Add a small delay between batches to avoid rate limiting
-      if (i + BATCH_SIZE < blocksWithChildren.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        hasMore = response.has_more;
+        cursor = response.next_cursor;
       }
-    }
 
-    return blocks;
-  } catch (error) {
-    console.error(`Error retrieving blocks for ${blockId}:`, error);
-    return [];
-  }
-};
+      // Process blocks with children in parallel batches
+      const blocksWithChildren = blocks.filter(block => block.has_children);
+      const BATCH_SIZE = 5; // Process 5 blocks at a time to avoid rate limiting
+
+      for (let i = 0; i < blocksWithChildren.length; i += BATCH_SIZE) {
+        const batch = blocksWithChildren.slice(i, i + BATCH_SIZE);
+        const childBlocksPromises = batch.map(block => getAllBlocksRecursive(block.id, depth + 1));
+
+        const childBlocksResults = await Promise.all(childBlocksPromises);
+
+        // Update the original blocks with their children
+        batch.forEach((block, index) => {
+          const blockIndex = blocks.findIndex(b => b.id === block.id);
+          if (blockIndex !== -1) {
+            blocks[blockIndex].children = childBlocksResults[index];
+          }
+        });
+
+        // Add a small delay between batches to avoid rate limiting
+        if (i + BATCH_SIZE < blocksWithChildren.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      return blocks;
+    } catch (error) {
+      console.error(`Error retrieving blocks for ${blockId}:`, error);
+      return [];
+    }
+  });
 
 /**
  * Get simple block children (non-recursive version)
  * @param {string} blockId - Block ID to retrieve children for
  * @returns {Array} - Array of block objects
  */
-const getBlockChildren = async blockId => {
-  try {
-    const { results } = await notion.blocks.children.list({
-      block_id: blockId,
-    });
-    return results;
-  } catch (error) {
-    throw new Error(`Error retrieving block children: ${error.message}`);
-  }
-};
+const getBlockChildren = async blockId =>
+  timingInterceptor('getBlockChildren', async () => {
+    try {
+      const { results } = await notion.blocks.children.list({
+        block_id: blockId,
+      });
+      return results;
+    } catch (error) {
+      throw new Error(`Error retrieving block children: ${error.message}`);
+    }
+  });
 
 /**
  * Convert Notion blocks to Markdown
  * @param {Array} blocks - Array of Notion blocks
  * @returns {string} - Markdown representation of the blocks
  */
-const convertToMarkdown = async blocks => {
-  let markdown = '';
+const convertToMarkdown = async blocks =>
+  timingInterceptor('convertToMarkdown', async () => {
+    let markdown = '';
 
-  for (const block of blocks) {
-    switch (block.type) {
-      case 'paragraph':
-        markdown += getParagraphText(block) + '\n\n';
-        break;
+    for (const block of blocks) {
+      switch (block.type) {
+        case 'paragraph':
+          markdown += getParagraphText(block) + '\n\n';
+          break;
 
-      case 'heading_1':
-        markdown += `# ${getTextContent(block.heading_1.rich_text)}\n\n`;
-        break;
+        case 'heading_1':
+          markdown += `# ${getTextContent(block.heading_1.rich_text)}\n\n`;
+          break;
 
-      case 'heading_2':
-        markdown += `## ${getTextContent(block.heading_2.rich_text)}\n\n`;
-        break;
+        case 'heading_2':
+          markdown += `## ${getTextContent(block.heading_2.rich_text)}\n\n`;
+          break;
 
-      case 'heading_3':
-        markdown += `### ${getTextContent(block.heading_3.rich_text)}\n\n`;
-        break;
+        case 'heading_3':
+          markdown += `### ${getTextContent(block.heading_3.rich_text)}\n\n`;
+          break;
 
-      case 'bulleted_list_item':
-        markdown += `* ${getTextContent(block.bulleted_list_item.rich_text)}\n`;
-        break;
+        case 'bulleted_list_item':
+          markdown += `* ${getTextContent(block.bulleted_list_item.rich_text)}\n`;
+          break;
 
-      case 'numbered_list_item':
-        markdown += `1. ${getTextContent(block.numbered_list_item.rich_text)}\n`;
-        break;
+        case 'numbered_list_item':
+          markdown += `1. ${getTextContent(block.numbered_list_item.rich_text)}\n`;
+          break;
 
-      case 'to_do':
-        const isChecked = block.to_do.checked;
-        markdown += `- [${isChecked ? 'x' : ' '}] ${getTextContent(block.to_do.rich_text)}\n`;
-        break;
+        case 'to_do':
+          const isChecked = block.to_do.checked;
+          markdown += `- [${isChecked ? 'x' : ' '}] ${getTextContent(block.to_do.rich_text)}\n`;
+          break;
 
-      case 'toggle':
-        markdown += `<details><summary>${getTextContent(block.toggle.rich_text)}</summary>\n\n`;
+        case 'toggle':
+          markdown += `<details><summary>${getTextContent(block.toggle.rich_text)}</summary>\n\n`;
 
-        // Handle nested content
-        if (block.has_children) {
-          const children = await getBlockChildren(block.id);
-          markdown += await convertToMarkdown(children);
-        }
-
-        markdown += '</details>\n\n';
-        break;
-
-      case 'code':
-        const language = block.code.language || '';
-        markdown += `\`\`\`${language}\n${getTextContent(block.code.rich_text)}\n\`\`\`\n\n`;
-        break;
-
-      case 'quote':
-        markdown += `> ${getTextContent(block.quote.rich_text)}\n\n`;
-        break;
-
-      case 'divider':
-        markdown += '---\n\n';
-        break;
-
-      case 'callout':
-        const emoji = block.callout.icon && block.callout.icon.type === 'emoji' ? block.callout.icon.emoji : '';
-        markdown += `> ${emoji} **Note:** ${getTextContent(block.callout.rich_text)}\n\n`;
-        break;
-
-      case 'bookmark':
-        markdown += `[${
-          block.bookmark.caption?.length ? getTextContent(block.bookmark.caption) : block.bookmark.url
-        }](${block.bookmark.url})\n\n`;
-        break;
-
-      case 'equation':
-        markdown += `$$\n${block.equation.expression}\n$$\n\n`;
-        break;
-
-      case 'table':
-        // Handle tables in the nested loop since we need the children
-        if (block.has_children) {
-          const tableRows = await getBlockChildren(block.id);
-          const numColumns = block.table.table_width;
-
-          // Create header row
-          let tableMarkdown = '';
-
-          // Create the table rows
-          for (let i = 0; i < tableRows.length; i++) {
-            const row = tableRows[i];
-
-            if (row.type === 'table_row') {
-              const cells = row.table_row.cells;
-
-              // Create row with cell content
-              tableMarkdown += '| ';
-              for (let j = 0; j < cells.length; j++) {
-                tableMarkdown += getTextContent(cells[j]) + ' | ';
-              }
-              tableMarkdown += '\n';
-
-              // Add separator row after header
-              if (i === 0 && block.table.has_column_header) {
-                tableMarkdown += '| ';
-                for (let j = 0; j < numColumns; j++) {
-                  tableMarkdown += '--- | ';
-                }
-                tableMarkdown += '\n';
-              }
-            }
+          // Handle nested content
+          if (block.has_children) {
+            const children = await getBlockChildren(block.id);
+            markdown += await convertToMarkdown(children);
           }
 
-          markdown += tableMarkdown + '\n';
-        }
-        break;
+          markdown += '</details>\n\n';
+          break;
 
-      case 'image':
-        const imageUrl = block.image.type === 'external' ? block.image.external.url : block.image.file.url;
-        const imageCaption =
-          block.image.caption && block.image.caption.length > 0 ? getTextContent(block.image.caption) : 'Image';
-        markdown += `![${imageCaption}](${imageUrl})\n\n`;
-        break;
+        case 'code':
+          const language = block.code.language || '';
+          markdown += `\`\`\`${language}\n${getTextContent(block.code.rich_text)}\n\`\`\`\n\n`;
+          break;
 
-      // Handle nested blocks using the already loaded children
-      default:
-        if (block.has_children) {
-          // Use children from recursive fetch if available
-          const children = block.children || (await getBlockChildren(block.id));
-          markdown += await convertToMarkdown(children);
-        }
-        break;
+        case 'quote':
+          markdown += `> ${getTextContent(block.quote.rich_text)}\n\n`;
+          break;
+
+        case 'divider':
+          markdown += '---\n\n';
+          break;
+
+        case 'callout':
+          const emoji = block.callout.icon && block.callout.icon.type === 'emoji' ? block.callout.icon.emoji : '';
+          markdown += `> ${emoji} **Note:** ${getTextContent(block.callout.rich_text)}\n\n`;
+          break;
+
+        case 'bookmark':
+          markdown += `[${
+            block.bookmark.caption?.length ? getTextContent(block.bookmark.caption) : block.bookmark.url
+          }](${block.bookmark.url})\n\n`;
+          break;
+
+        case 'equation':
+          markdown += `$$\n${block.equation.expression}\n$$\n\n`;
+          break;
+
+        case 'table':
+          // Handle tables in the nested loop since we need the children
+          if (block.has_children) {
+            const tableRows = await getBlockChildren(block.id);
+            const numColumns = block.table.table_width;
+
+            // Create header row
+            let tableMarkdown = '';
+
+            // Create the table rows
+            for (let i = 0; i < tableRows.length; i++) {
+              const row = tableRows[i];
+
+              if (row.type === 'table_row') {
+                const cells = row.table_row.cells;
+
+                // Create row with cell content
+                tableMarkdown += '| ';
+                for (let j = 0; j < cells.length; j++) {
+                  tableMarkdown += getTextContent(cells[j]) + ' | ';
+                }
+                tableMarkdown += '\n';
+
+                // Add separator row after header
+                if (i === 0 && block.table.has_column_header) {
+                  tableMarkdown += '| ';
+                  for (let j = 0; j < numColumns; j++) {
+                    tableMarkdown += '--- | ';
+                  }
+                  tableMarkdown += '\n';
+                }
+              }
+            }
+
+            markdown += tableMarkdown + '\n';
+          }
+          break;
+
+        case 'image':
+          const imageUrl = block.image.type === 'external' ? block.image.external.url : block.image.file.url;
+          const imageCaption =
+            block.image.caption && block.image.caption.length > 0 ? getTextContent(block.image.caption) : 'Image';
+          markdown += `![${imageCaption}](${imageUrl})\n\n`;
+          break;
+
+        // Handle nested blocks using the already loaded children
+        default:
+          if (block.has_children) {
+            // Use children from recursive fetch if available
+            const children = block.children || (await getBlockChildren(block.id));
+            markdown += await convertToMarkdown(children);
+          }
+          break;
+      }
     }
-  }
 
-  return markdown;
-};
+    return markdown;
+  });
 
 /**
  * Convert blocks to HTML
@@ -495,35 +516,37 @@ const extractPageProperties = pageInfo => {
  * @param {Object} pageData - The page data to cache
  * @returns {boolean} - Success status
  */
-const cachePageData = async (pageId, pageData) => {
-  try {
-    // Create cache directory if it doesn't exist
-    await fs.mkdir(CACHE_DIR, { recursive: true });
+const cachePageData = async (pageId, pageData) =>
+  timingInterceptor('cachePageData', async () => {
+    try {
+      // Create cache directory if it doesn't exist
+      await fs.mkdir(CACHE_DIR, { recursive: true });
 
-    const cachePath = path.join(CACHE_DIR, `${pageId}.json`);
-    await fs.writeFile(cachePath, JSON.stringify(pageData, null, 2));
-    return true;
-  } catch (error) {
-    console.error('Error caching page data:', error);
-    return false;
-  }
-};
+      const cachePath = path.join(CACHE_DIR, `${pageId}.json`);
+      await fs.writeFile(cachePath, JSON.stringify(pageData, null, 2));
+      return true;
+    } catch (error) {
+      console.error('Error caching page data:', error);
+      return false;
+    }
+  });
 
 /**
  * Get cached page data if available
  * @param {string} pageId - Notion page ID
  * @returns {Object|null} - Cached page data or null if not available
  */
-const getCachedPageData = async pageId => {
-  try {
-    const cachePath = path.join(CACHE_DIR, `${pageId}.json`);
-    const data = await fs.readFile(cachePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // Cache miss or error reading cache
-    return null;
-  }
-};
+const getCachedPageData = async pageId =>
+  timingInterceptor('getCachedPageData', async () => {
+    try {
+      const cachePath = path.join(CACHE_DIR, `${pageId}.json`);
+      const data = await fs.readFile(cachePath, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      // Cache miss or error reading cache
+      return null;
+    }
+  });
 
 /**
  * Import a complete Notion page with all content and metadata
@@ -531,93 +554,94 @@ const getCachedPageData = async pageId => {
  * @param {Object} options - Import options
  * @returns {Object} - Complete page data
  */
-const importNotionPage = async (pageUrl, options = {}) => {
-  const {
-    useCache = true,
-    outputFormat = 'all', // 'all', 'markdown', 'html', 'json'
-    includeChildren = true,
-  } = options;
+const importNotionPage = async (pageUrl, options = {}) =>
+  timingInterceptor('importNotionPage', async () => {
+    const {
+      useCache = true,
+      outputFormat = 'all', // 'all', 'markdown', 'html', 'json'
+      includeChildren = true,
+    } = options;
 
-  try {
-    const pageId = extractPageId(pageUrl);
+    try {
+      const pageId = await extractPageId(pageUrl);
 
-    // Try to get from cache if enabled
-    if (useCache) {
-      const cachedData = await getCachedPageData(pageId);
-      if (cachedData) {
-        // Return only requested format if specified
-        if (outputFormat !== 'all') {
-          return {
-            id: cachedData.id,
-            title: cachedData.title,
-            [outputFormat]: cachedData[outputFormat],
-            properties: cachedData.properties,
-            lastUpdated: cachedData.lastUpdated,
-            url: cachedData.url,
-          };
+      // Try to get from cache if enabled
+      if (useCache) {
+        const cachedData = await getCachedPageData(pageId);
+        if (cachedData) {
+          // Return only requested format if specified
+          if (outputFormat !== 'all') {
+            return {
+              id: cachedData.id,
+              title: cachedData.title,
+              [outputFormat]: cachedData[outputFormat],
+              properties: cachedData.properties,
+              lastUpdated: cachedData.lastUpdated,
+              url: cachedData.url,
+            };
+          }
+          return cachedData;
         }
-        return cachedData;
       }
-    }
 
-    // Get basic page information
-    const pageInfo = await notion.pages.retrieve({
-      page_id: pageId,
-    });
+      // Get basic page information
+      const pageInfo = await notion.pages.retrieve({
+        page_id: pageId,
+      });
 
-    // Get all blocks (with or without children based on the option)
-    const blocks = includeChildren ? await getAllBlocksRecursive(pageId) : await getBlockChildren(pageId);
+      // Get all blocks (with or without children based on the option)
+      const blocks = includeChildren ? await getAllBlocksRecursive(pageId) : await getBlockChildren(pageId);
 
-    // Get page metadata
-    let title = 'Notion Page';
-    if (pageInfo.properties && pageInfo.properties.title) {
-      const titleProp = pageInfo.properties.title;
-      if (titleProp.title && titleProp.title.length > 0) {
-        title = getTextContent(titleProp.title);
+      // Get page metadata
+      let title = 'Notion Page';
+      if (pageInfo.properties && pageInfo.properties.title) {
+        const titleProp = pageInfo.properties.title;
+        if (titleProp.title && titleProp.title.length > 0) {
+          title = getTextContent(titleProp.title);
+        }
       }
+
+      // Extract page properties
+      const properties = extractPageProperties(pageInfo);
+
+      // Convert content to requested formats
+      let markdown = '';
+      let html = '';
+
+      if (outputFormat === 'all' || outputFormat === 'markdown') {
+        markdown = await convertToMarkdown(blocks);
+      }
+
+      if (outputFormat === 'all' || outputFormat === 'html') {
+        html = await convertToHTML(blocks);
+      }
+
+      // Build the final result
+      const pageData = {
+        id: pageId,
+        title,
+        url: pageUrl,
+        lastUpdated: pageInfo.last_edited_time,
+        createdTime: pageInfo.created_time,
+        properties,
+        // Include requested formats
+        blocks: outputFormat === 'all' || outputFormat === 'json' ? blocks : undefined,
+        markdown: outputFormat === 'all' || outputFormat === 'markdown' ? markdown : undefined,
+        html: outputFormat === 'all' || outputFormat === 'html' ? html : undefined,
+        icon: pageInfo.icon || null,
+        cover: pageInfo.cover || null,
+      };
+
+      // Cache the result if caching is enabled
+      if (useCache) {
+        await cachePageData(pageId, pageData);
+      }
+
+      return pageData;
+    } catch (error) {
+      throw new Error(`Error importing Notion page: ${error.message}`);
     }
-
-    // Extract page properties
-    const properties = extractPageProperties(pageInfo);
-
-    // Convert content to requested formats
-    let markdown = '';
-    let html = '';
-
-    if (outputFormat === 'all' || outputFormat === 'markdown') {
-      markdown = await convertToMarkdown(blocks);
-    }
-
-    if (outputFormat === 'all' || outputFormat === 'html') {
-      html = await convertToHTML(blocks);
-    }
-
-    // Build the final result
-    const pageData = {
-      id: pageId,
-      title,
-      url: pageUrl,
-      lastUpdated: pageInfo.last_edited_time,
-      createdTime: pageInfo.created_time,
-      properties,
-      // Include requested formats
-      blocks: outputFormat === 'all' || outputFormat === 'json' ? blocks : undefined,
-      markdown: outputFormat === 'all' || outputFormat === 'markdown' ? markdown : undefined,
-      html: outputFormat === 'all' || outputFormat === 'html' ? html : undefined,
-      icon: pageInfo.icon || null,
-      cover: pageInfo.cover || null,
-    };
-
-    // Cache the result if caching is enabled
-    if (useCache) {
-      await cachePageData(pageId, pageData);
-    }
-
-    return pageData;
-  } catch (error) {
-    throw new Error(`Error importing Notion page: ${error.message}`);
-  }
-};
+  });
 
 /**
  * Get Notion page content as Markdown (legacy function for backward compatibility)
